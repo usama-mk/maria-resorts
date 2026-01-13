@@ -34,10 +34,12 @@ export default function DashboardLayout({
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <Sidebar userRole={userRole} />
-      <main className="lg:pl-64 min-h-screen transition-all duration-200">
-        <div className="container mx-auto p-6 md:p-8 max-w-7xl">
+    <div className="min-h-screen bg-gray-50/50 print:bg-white">
+      <div className="print:hidden">
+        <Sidebar userRole={userRole} />
+      </div>
+      <main className="lg:pl-64 min-h-screen transition-all duration-200 print:pl-0">
+        <div className="container mx-auto p-6 md:p-8 max-w-7xl print:p-0 print:max-w-none">
           {children}
         </div>
       </main>

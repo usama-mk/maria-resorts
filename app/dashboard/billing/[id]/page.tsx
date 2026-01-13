@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import Link from 'next/link';
 
 export default function BillDetailPage() {
   const { id } = useParams();
+  const searchParams = useSearchParams();
   const [bill, setBill] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -24,6 +25,12 @@ export default function BillDetailPage() {
         });
         if (response.data.data && response.data.data.length > 0) {
           setBill(response.data.data[0]);
+          // Auto-print if requested
+          if (searchParams.get('print') === 'true') {
+            setTimeout(() => {
+              window.print();
+            }, 500); // Small delay to ensure render
+          }
         }
       } catch (error) {
         console.error('Failed to fetch bill', error);
@@ -33,7 +40,7 @@ export default function BillDetailPage() {
     };
 
     if (id) fetchBill();
-  }, [id]);
+  }, [id, searchParams]);
 
   if (loading) return <div className="p-8 text-center">Loading invoice details...</div>;
   if (!bill) return <div className="p-8 text-center text-red-500">Invoice not found</div>;

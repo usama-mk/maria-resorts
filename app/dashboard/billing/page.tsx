@@ -32,8 +32,6 @@ import {
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 export default function BillingPage() {
   const [bills, setBills] = useState<any[]>([]);
@@ -98,57 +96,7 @@ export default function BillingPage() {
     }
   };
 
-  const generatePDF = (bill: any) => {
-    const doc = new jsPDF();
-    
-    // Header
-    doc.setFontSize(22);
-    doc.text('MARIA RESORTS', 105, 20, { align: 'center' });
-    
-    doc.setFontSize(12);
-    doc.text('Official Invoice', 105, 30, { align: 'center' });
-    
-    // Bill Details
-    doc.setFontSize(10);
-    doc.text(`Bill #: ${bill.billNumber}`, 15, 45);
-    doc.text(`Date: ${new Date(bill.generatedAt).toLocaleDateString()}`, 15, 50);
-    doc.text(`Guest: ${bill.guest?.name}`, 15, 55);
-    
-    // Status
-    doc.text(`Status: ${bill.status}`, 150, 45);
-    
-    // Items Table
-    const tableData = bill.items.map((item: any) => [
-      item.description,
-      item.itemType, // Assuming backend provides 'itemType' or similar distinguish
-      item.quantity,
-      `Rs ${item.unitPrice}`,
-      `Rs ${item.total}`
-    ]);
-    
-    autoTable(doc, {
-      startY: 65,
-      head: [['Description', 'Type', 'Qty', 'Unit Price', 'Total']],
-      body: tableData,
-    });
-    
-    // Totals
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
-    
-    doc.text(`Subtotal: Rs ${bill.total - bill.taxAmount}`, 140, finalY);
-    doc.text(`Tax (5%): Rs ${bill.taxAmount}`, 140, finalY + 5);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Total: Rs ${bill.total}`, 140, finalY + 12);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const totalPaid = bill.payments.reduce((sum: number, p: any) => sum + p.amount, 0);
-    doc.text(`Paid: Rs ${totalPaid}`, 140, finalY + 20);
-    doc.text(`Balance: Rs ${bill.total - totalPaid}`, 140, finalY + 25);
-    
-    doc.save(`Invoice-${bill.billNumber}.pdf`);
-  };
+
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
@@ -224,15 +172,17 @@ export default function BillingPage() {
                             Pay
                           </Button>
                         )}
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => generatePDF(bill)}
-                        >
-                          <Download className="h-4 w-4 text-blue-600" />
-                        </Button>
+                        <Link href={`/dashboard/billing/${bill.id}?print=true`} target="_blank">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            title="Print Invoice"
+                          >
+                            <Download className="h-4 w-4 text-blue-600" />
+                          </Button>
+                        </Link>
                         <Link href={`/dashboard/billing/${bill.id}`} target="_blank">
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" title="View Details">
                              <Receipt className="h-4 w-4 text-gray-600" />
                           </Button>
                         </Link>
