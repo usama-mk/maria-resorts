@@ -1,0 +1,338 @@
+// Prisma Schema for Hotel Resort Management System
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// User Management
+// ============================================
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(FRONTDESK)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  ACCOUNTANT
+  FRONTDESK
+}
+
+// ============================================
+// Guest Management
+// ============================================
+
+model Guest {
+  id           String   @id @default(uuid())
+  name         String
+  cnic         String?  @unique
+  passport     String?  @unique
+  phone        String
+  email        String?
+  address      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reservations Reservation[]
+  checkIns     CheckIn[]
+  bills        Bill[]
+
+  @@map("guests")
+}
+
+// ============================================
+// Room Management
+// ============================================
+
+model RoomCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  basePrice   Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rooms Room[]
+
+  @@map("room_categories")
+}
+
+model Room {
+  id         String     @id @default(uuid())
+  roomNumber String     @unique
+  categoryId String
+  status     RoomStatus @default(AVAILABLE)
+  floor      Int?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  category     RoomCategory  @relation(fields: [categoryId], references: [id])
+  reservations Reservation[]
+  checkIns     CheckIn[]
+  billItems    BillItem[]
+
+  @@map("rooms")
+}
+
+enum RoomStatus {
+  AVAILABLE
+  BOOKED
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+}
+
+// ============================================
+// Reservation & Booking
+// ============================================
+
+model Reservation {
+  id                 String            @id @default(uuid())
+  guestId            String
+  roomId             String
+  checkInDate        DateTime
+  expectedCheckOut   DateTime
+  status             ReservationStatus @default(RESERVED)
+  advancePayment     Float             @default(0)
+  notes              String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  guest    Guest     @relation(fields: [guestId], references: [id])
+  room     Room      @relation(fields: [roomId], references: [id])
+  checkIns CheckIn[]
+
+  @@map("reservations")
+}
+
+enum ReservationStatus {
+  RESERVED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+}
+
+// ============================================
+// Check-In / Check-Out
+// ============================================
+
+model CheckIn {
+  id               String    @id @default(uuid())
+  reservationId    String?
+  guestId          String
+  roomId           String
+  checkInTime      DateTime  @default(now())
+  expectedCheckOut DateTime
+  actualCheckOut   DateTime?
+  lateCheckout     Boolean   @default(false)
+  lateCharges      Float     @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  reservation Reservation? @relation(fields: [reservationId], references: [id])
+  guest       Guest        @relation(fields: [guestId], references: [id])
+  room        Room         @relation(fields: [roomId], references: [id])
+  bills       Bill[]
+
+  @@map("checkins")
+}
+
+// ============================================
+// Billing & Payments
+// ============================================
+
+model Bill {
+  id              String        @id @default(uuid())
+  billNumber      String        @unique
+  guestId         String
+  checkInId       String?
+  subtotal        Float         @default(0)
+  tax             Float         @default(0)
+  total           Float         @default(0)
+  status          PaymentStatus @default(UNPAID)
+  generatedAt     DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  guest     Guest      @relation(fields: [guestId], references: [id])
+  checkIn   CheckIn?   @relation(fields: [checkInId], references: [id])
+  items     BillItem[]
+  payments  Payment[]
+
+  @@map("bills")
+}
+
+model BillItem {
+  id          String       @id @default(uuid())
+  billId      String
+  type        BillItemType
+  description String
+  quantity    Int          @default(1)
+  unitPrice   Float
+  total       Float
+  roomId      String?
+  foodId      String?
+  serviceId   String?
+  createdAt   DateTime     @default(now())
+
+  bill    Bill             @relation(fields: [billId], references: [id], onDelete: Cascade)
+  room    Room?            @relation(fields: [roomId], references: [id])
+  food    FoodMenuItem?    @relation(fields: [foodId], references: [id])
+  service ExtraService?    @relation(fields: [serviceId], references: [id])
+
+  @@map("bill_items")
+}
+
+enum BillItemType {
+  ROOM
+  FOOD
+  SERVICE
+  OTHER
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  billId        String
+  amount        Float
+  paymentMethod PaymentMethod
+  paymentDate   DateTime      @default(now())
+  notes         String?
+  createdAt     DateTime      @default(now())
+
+  bill Bill @relation(fields: [billId], references: [id])
+
+  @@map("payments")
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CARD
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+}
+
+// ============================================
+// Food & Services
+// ============================================
+
+model FoodCategory {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  items FoodMenuItem[]
+
+  @@map("food_categories")
+}
+
+model FoodMenuItem {
+  id         String  @id @default(uuid())
+  name       String
+  categoryId String
+  price      Float
+  available  Boolean @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category  FoodCategory @relation(fields: [categoryId], references: [id])
+  billItems BillItem[]
+
+  @@map("food_menu")
+}
+
+model ExtraService {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  price       Float
+  available   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  billItems BillItem[]
+
+  @@map("extra_services")
+}
+
+// ============================================
+// Vendor Management
+// ============================================
+
+model Vendor {
+  id           String   @id @default(uuid())
+  name         String
+  contactPerson String?
+  phone        String?
+  email        String?
+  address      String?
+  services     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  transactions VendorTransaction[]
+
+  @@map("vendors")
+}
+
+model VendorTransaction {
+  id              String                  @id @default(uuid())
+  vendorId        String
+  type            VendorTransactionType
+  amount          Float
+  description     String
+  transactionDate DateTime                @default(now())
+  paymentStatus   PaymentStatus           @default(UNPAID)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+
+  @@map("vendor_transactions")
+}
+
+enum VendorTransactionType {
+  BILL_RECEIVED
+  PAYMENT_MADE
+}
+
+// ============================================
+// Audit Logs
+// ============================================
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  action      String
+  entityType  String
+  entityId    String?
+  oldValue    String?
+  newValue    String?
+  timestamp   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}

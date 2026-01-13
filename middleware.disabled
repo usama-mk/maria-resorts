@@ -1,0 +1,68 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { verifyToken } from './lib/token';
+
+// Public paths that don't require authentication
+const publicPaths = ['/api/auth/login'];
+
+export async function middleware(request: NextRequest) {
+    const { pathname } = request.nextUrl;
+
+    // Allow public paths
+    if (publicPaths.some(path => pathname.startsWith(path))) {
+        return NextResponse.next();
+    }
+
+    // Check authentication for API routes
+    if (pathname.startsWith('/api/')) {
+        const authHeader = request.headers.get('authorization');
+
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return Response.json(
+                { success: false, message: 'Unauthorized - No token provided' },
+                { status: 401 }
+            );
+        }
+
+        const token = authHeader.substring(7);
+        const user = await verifyToken(token);
+
+        if (!user) {
+            return Response.json(
+                { success: false, message: 'Unauthorized - Invalid token' },
+                { status: 401 }
+            );
+        }
+
+        // Add user info to headers for downstream use
+        const requestHeaders = new Headers(request.headers);
+        requestHeaders.set('x-user-id', user.userId);
+        requestHeaders.set('x-user-role', user.role);
+
+        return NextResponse.next({
+            request: {
+                headers: requestHeaders,
+            },
+        });
+    }
+
+    // Check authentication for dashboard routes
+    if (pathname.startsWith('/dashboard')) {
+        const token = request.cookies.get('token')?.value;
+
+        if (!token) {
+            return NextResponse.redirect(new URL('/', request.url));
+        }
+
+        const user = await verifyToken(token);
+        if (!user) {
+            return NextResponse.redirect(new URL('/', request.url));
+        }
+    }
+
+    return NextResponse.next();
+}
+
+export const config = {
+    matcher: ['/api/:path*', '/dashboard/:path*'],
+};
