@@ -5,7 +5,7 @@ import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, BedDouble, CreditCard, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 export default function DashboardPage() {
@@ -19,14 +19,12 @@ export default function DashboardPage() {
         const token = localStorage.getItem('token');
         const config = { headers: { Authorization: `Bearer ${token}` } };
 
-        const [financialRes, occupancyRes] = await Promise.all([
-          axios.get('/api/reports?type=today', config), // Assuming 'today' works or falls back to something useful, actually API supports 'daily'
-          axios.get('/api/reports?type=occupancy', config)
-        ]);
-        
-        // Let's actually get daily stats properly
         const todayStr = new Date().toISOString().split('T')[0];
-        const dailyRes = await axios.get(`/api/reports?type=daily&date=${todayStr}`, config);
+        
+        const [occupancyRes, dailyRes] = await Promise.all([
+          axios.get('/api/reports?type=occupancy', config),
+          axios.get(`/api/reports?type=daily&date=${todayStr}`, config)
+        ]);
 
         setStats(dailyRes.data.data);
         setOccupancy(occupancyRes.data.data);

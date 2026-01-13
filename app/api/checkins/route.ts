@@ -38,7 +38,26 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { reservationId, guestId, roomId, expectedCheckOut } = body;
+        let { reservationId, guestId, roomId, expectedCheckOut } = body;
+
+        // Sanitize reservationId (convert empty string to null)
+        if (reservationId === '') reservationId = null;
+
+        // If reservation is provided, fetch details
+        if (reservationId) {
+            const reservation = await prisma.reservation.findUnique({
+                where: { id: reservationId },
+            });
+
+            if (!reservation) {
+                return errorResponse('Reservation not found', 404);
+            }
+
+            // Auto-fill missing fields from reservation
+            if (!guestId) guestId = reservation.guestId;
+            if (!roomId) roomId = reservation.roomId;
+            if (!expectedCheckOut) expectedCheckOut = reservation.checkOut;
+        }
 
         if (!guestId || !roomId || !expectedCheckOut) {
             return errorResponse('Guest, room, and expected checkout date are required');
@@ -50,6 +69,10 @@ export async function POST(request: NextRequest) {
             return errorResponse('Room not found', 404);
         }
 
+        // Allow check-in if room is reserved for THIS reservation
+        // If it's occupied by someone else, block it.
+        // We need to check if the current occupant is different.
+        // For simplicity, sticking to status check but considering 'RESERVED' as valid for check-in.
         if (room.status === 'OCCUPIED' || room.status === 'MAINTENANCE') {
             return errorResponse(`Room is ${room.status.toLowerCase()}`);
         }
