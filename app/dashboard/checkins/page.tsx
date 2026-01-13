@@ -252,6 +252,27 @@ export default function CheckInsPage() {
                 <Input type="date" id="expectedCheckOut" {...registerCheckIn('expectedCheckOut')} />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="grid gap-2">
+                    <Label htmlFor="customPrice">Custom Room Price (Optional)</Label>
+                    <Input 
+                      type="number" 
+                      id="customPrice" 
+                      placeholder="Leave empty for default"
+                      {...registerCheckIn('customPrice')} 
+                    />
+                 </div>
+                 <div className="grid gap-2">
+                    <Label htmlFor="advancePayment">Advance Payment (Optional)</Label>
+                    <Input 
+                      type="number" 
+                      id="advancePayment" 
+                      placeholder="0.00"
+                      {...registerCheckIn('advancePayment')} 
+                    />
+                 </div>
+              </div>
+
             <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setIsCheckInOpen(false)}>
                 Cancel

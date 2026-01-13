@@ -142,6 +142,7 @@ model CheckIn {
   checkInTime      DateTime  @default(now())
   expectedCheckOut DateTime
   actualCheckOut   DateTime?
+  customRate       Float?
   lateCheckout     Boolean   @default(false)
   lateCharges      Float     @default(0)
   createdAt        DateTime  @default(now())

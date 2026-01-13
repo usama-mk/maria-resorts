@@ -7,11 +7,13 @@ import { generateBillNumber, calculateRoomCharges, calculateTax } from '@/lib/ut
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
         const guestId = searchParams.get('guestId');
         const billNumber = searchParams.get('billNumber');
         const status = searchParams.get('status');
 
         let where: any = {};
+        if (id) where.id = id;
         if (guestId) where.guestId = guestId;
         if (billNumber) where.billNumber = billNumber;
         if (status) where.status = status;

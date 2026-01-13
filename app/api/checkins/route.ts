@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        let { reservationId, guestId, roomId, expectedCheckOut } = body;
+        let { reservationId, guestId, roomId, expectedCheckOut, customPrice, advancePayment } = body;
 
         // Sanitize reservationId (convert empty string to null)
         if (reservationId === '') reservationId = null;
@@ -57,6 +57,10 @@ export async function POST(request: NextRequest) {
             if (!guestId) guestId = reservation.guestId;
             if (!roomId) roomId = reservation.roomId;
             if (!expectedCheckOut) expectedCheckOut = reservation.checkOut;
+            // Use reservation advance payment if not overridden
+            if (advancePayment === undefined && reservation.advancePayment) {
+                advancePayment = reservation.advancePayment;
+            }
         }
 
         if (!guestId || !roomId || !expectedCheckOut) {
@@ -84,6 +88,7 @@ export async function POST(request: NextRequest) {
                 guestId,
                 roomId,
                 expectedCheckOut: new Date(expectedCheckOut),
+                customRate: customPrice ? parseFloat(customPrice) : null,
             },
             include: {
                 guest: true,
@@ -109,6 +114,40 @@ export async function POST(request: NextRequest) {
             });
         }
 
+        // CREATE BILL IMMEDIATELY
+        const bill = await prisma.bill.create({
+            data: {
+                billNumber: `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                guestId: guestId,
+                checkInId: checkIn.id,
+                subtotal: 0,
+                tax: 0,
+                total: 0,
+                status: 'UNPAID', // Will update if advance payment covers it (unlikely at start)
+            },
+        });
+
+        // Record Advance Payment if any
+        if (advancePayment && parseFloat(advancePayment) > 0) {
+            const amount = parseFloat(advancePayment);
+            await prisma.payment.create({
+                data: {
+                    billId: bill.id,
+                    amount: amount,
+                    paymentMethod: 'CASH', // Default for advance, or add field to form
+                    notes: 'Advance Payment at Check-in',
+                },
+            });
+
+            // Update bill status to PARTIALLY_PAID (even if 0 total, getting money means partial credits? 
+            // Actually total is 0 right now, so if we pay, we are overpaying?
+            // Let's just mark it PARTIALLY_PAID because the final bill will be larger.
+            await prisma.bill.update({
+                where: { id: bill.id },
+                data: { status: 'PARTIALLY_PAID' },
+            });
+        }
+
         // Audit log
         const userId = request.headers.get('x-user-id');
         if (userId) {
@@ -123,7 +162,7 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        return successResponse(checkIn, 'Guest checked in successfully');
+        return successResponse({ ...checkIn, billId: bill.id }, 'Guest checked in successfully');
     } catch (error: any) {
         return errorResponse(error.message || 'Failed to check in', 500);
     }
@@ -182,10 +221,10 @@ export async function PUT(request: NextRequest) {
             },
         });
 
-        // Update room status to CLEANING
+        // Update room status to AVAILABLE immediately (skip CLEANING for now as per user request)
         await prisma.room.update({
             where: { id: checkIn.roomId },
-            data: { status: 'CLEANING' },
+            data: { status: 'AVAILABLE' },
         });
 
         // Update reservation if exists
@@ -196,31 +235,40 @@ export async function PUT(request: NextRequest) {
             });
         }
 
-        // Create Bill automatically
-        const nights = Math.max(1, Math.ceil((new Date(updatedCheckIn.actualCheckOut || new Date()).getTime() - new Date(updatedCheckIn.checkInTime).getTime()) / (1000 * 60 * 60 * 24)));
-        const roomCharges = nights * updatedCheckIn.room.category.basePrice;
-
-        // Generate Bill
-        const bill = await prisma.bill.create({
-            data: {
-                billNumber: `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-                guestId: updatedCheckIn.guestId,
-                checkInId: updatedCheckIn.id,
-                subtotal: 0,
-                tax: 0,
-                total: 0,
-                status: 'UNPAID',
-            },
+        // Find existing Bill
+        let bill = await prisma.bill.findFirst({
+            where: { checkInId: updatedCheckIn.id },
         });
+
+        // Fallback: Create bill if missing (legacy support)
+        if (!bill) {
+            bill = await prisma.bill.create({
+                data: {
+                    billNumber: `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                    guestId: updatedCheckIn.guestId,
+                    checkInId: updatedCheckIn.id,
+                    subtotal: 0,
+                    tax: 0,
+                    total: 0,
+                    status: 'UNPAID',
+                },
+            });
+        }
+
+        // Calculate Room Charges (Use Custom Rate if available)
+        const nights = Math.max(1, Math.ceil((new Date(updatedCheckIn.actualCheckOut || new Date()).getTime() - new Date(updatedCheckIn.checkInTime).getTime()) / (1000 * 60 * 60 * 24)));
+        const pricePerNight = updatedCheckIn.customRate ?? updatedCheckIn.room.category.basePrice;
+        const roomCharges = nights * pricePerNight;
+        const rateDescription = updatedCheckIn.customRate ? ` (Custom Rate: ${updatedCheckIn.customRate})` : '';
 
         // Add Room Charge Item
         await prisma.billItem.create({
             data: {
                 billId: bill.id,
                 type: 'ROOM',
-                description: `${updatedCheckIn.room.category.name} - Room ${updatedCheckIn.room.roomNumber} (${nights} night${nights > 1 ? 's' : ''})`,
+                description: `${updatedCheckIn.room.category.name} - Room ${updatedCheckIn.room.roomNumber} (${nights} night${nights > 1 ? 's' : ''})${rateDescription}`,
                 quantity: nights,
-                unitPrice: updatedCheckIn.room.category.basePrice,
+                unitPrice: pricePerNight,
                 total: roomCharges,
                 roomId: updatedCheckIn.roomId,
             },
@@ -240,18 +288,23 @@ export async function PUT(request: NextRequest) {
             });
         }
 
-        // Add any existing UNBILLED extra service usages (if valid)
-        // For simplicity in this MVP, assuming extra services are added directly to bill or we'd query them here.
-
         // Calculate Totals
         const items = await prisma.billItem.findMany({ where: { billId: bill.id } });
         const subtotal = items.reduce((sum, item) => sum + item.total, 0);
         const tax = subtotal * 0.05; // 5% Tax
         const total = subtotal + tax;
 
+        // Check Payment Status
+        const payments = await prisma.payment.findMany({ where: { billId: bill.id } });
+        const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+
+        let status: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' = 'UNPAID';
+        if (totalPaid >= total) status = 'PAID';
+        else if (totalPaid > 0) status = 'PARTIALLY_PAID';
+
         await prisma.bill.update({
             where: { id: bill.id },
-            data: { subtotal, tax, total },
+            data: { subtotal, tax, total, status },
         });
 
         // Audit log

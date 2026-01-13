@@ -12,6 +12,7 @@ import {
   Euro, 
   Banknote 
 } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -230,6 +231,11 @@ export default function BillingPage() {
                         >
                           <Download className="h-4 w-4 text-blue-600" />
                         </Button>
+                        <Link href={`/dashboard/billing/${bill.id}`} target="_blank">
+                          <Button variant="ghost" size="sm">
+                             <Receipt className="h-4 w-4 text-gray-600" />
+                          </Button>
+                        </Link>
                       </TableCell>
                     </TableRow>
                   );

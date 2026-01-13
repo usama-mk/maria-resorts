@@ -13,21 +13,27 @@ export default function DashboardPage() {
   const [occupancy, setOccupancy] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  /* Real data for the chart */
+  const [weeklyData, setWeeklyData] = useState<any[]>([]);
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         const token = localStorage.getItem('token');
         const config = { headers: { Authorization: `Bearer ${token}` } };
 
-        const todayStr = new Date().toISOString().split('T')[0];
+        // Use local date string to ensure we fetch today's data relative to user's timezone
+        const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
         
-        const [occupancyRes, dailyRes] = await Promise.all([
+        const [occupancyRes, dailyRes, weeklyRes] = await Promise.all([
           axios.get('/api/reports?type=occupancy', config),
-          axios.get(`/api/reports?type=daily&date=${todayStr}`, config)
+          axios.get(`/api/reports?type=daily&date=${todayStr}`, config),
+          axios.get('/api/reports?type=weekly', config)
         ]);
 
         setStats(dailyRes.data.data);
         setOccupancy(occupancyRes.data.data);
+        setWeeklyData(weeklyRes.data.data);
       } catch (error) {
         console.error('Failed to fetch dashboard data', error);
         // toast.error('Failed to load dashboard data');
@@ -47,7 +53,7 @@ export default function DashboardPage() {
     {
       title: "Today's Revenue",
       value: stats ? formatCurrency(stats.totalRevenue) : 'PKR 0',
-      description: "Daily income from all sources",
+      description: `Collected: ${stats ? formatCurrency(stats.totalPaid) : 'PKR 0'}`,
       icon: CreditCard,
       color: "text-green-600"
     },
@@ -72,17 +78,6 @@ export default function DashboardPage() {
       icon: Activity,
       color: "text-orange-600"
     }
-  ];
-
-  /* Mock data for the chart if real history isn't available easily yet */
-  const chartData = [
-    { name: 'Mon', revenue: 4000 },
-    { name: 'Tue', revenue: 3000 },
-    { name: 'Wed', revenue: 2000 },
-    { name: 'Thu', revenue: 2780 },
-    { name: 'Fri', revenue: 1890 },
-    { name: 'Sat', revenue: 2390 },
-    { name: 'Sun', revenue: 3490 },
   ];
 
   return (
@@ -121,7 +116,7 @@ export default function DashboardPage() {
           <CardContent className="pl-2">
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
+                <BarChart data={weeklyData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `Rs${value}`} />

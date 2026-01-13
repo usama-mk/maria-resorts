@@ -218,6 +218,39 @@ export async function GET(request: NextRequest) {
             });
         }
 
+        if (type === 'weekly') {
+            const endDate = endOfDay(targetDate);
+            const startDate = startOfDay(new Date(targetDate.getTime() - 6 * 24 * 60 * 60 * 1000)); // 7 days inclusive
+
+            const bills = await prisma.bill.findMany({
+                where: {
+                    generatedAt: {
+                        gte: startDate,
+                        lte: endDate,
+                    },
+                },
+            });
+
+            // Group by day
+            const weeklyData = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+                const dayStart = startOfDay(d);
+                const dayEnd = endOfDay(d);
+
+                const dayBills = bills.filter(b => b.generatedAt >= dayStart && b.generatedAt <= dayEnd);
+                const revenue = dayBills.reduce((sum, b) => sum + b.total, 0);
+
+                weeklyData.push({
+                    name: d.toLocaleDateString('en-US', { weekday: 'short' }),
+                    revenue,
+                    date: d.toISOString().split('T')[0],
+                });
+            }
+
+            return successResponse(weeklyData);
+        }
+
         return errorResponse('Invalid report type');
     } catch (error: any) {
         return errorResponse(error.message || 'Failed to generate report', 500);
