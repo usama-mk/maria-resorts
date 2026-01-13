@@ -6,7 +6,12 @@ import { successResponse, errorResponse } from '@/lib/utils';
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { billId, amount, paymentMethod, notes } = body;
+        let { billId, amount, paymentMethod, notes, method } = body;
+
+        // Support 'method' alias for paymentMethod
+        if (!paymentMethod && method) {
+            paymentMethod = method;
+        }
 
         if (!billId || !amount || !paymentMethod) {
             return errorResponse('Bill ID, amount, and payment method are required');

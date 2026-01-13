@@ -196,6 +196,64 @@ export async function PUT(request: NextRequest) {
             });
         }
 
+        // Create Bill automatically
+        const nights = Math.max(1, Math.ceil((new Date(updatedCheckIn.actualCheckOut || new Date()).getTime() - new Date(updatedCheckIn.checkInTime).getTime()) / (1000 * 60 * 60 * 24)));
+        const roomCharges = nights * updatedCheckIn.room.category.basePrice;
+
+        // Generate Bill
+        const bill = await prisma.bill.create({
+            data: {
+                billNumber: `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                guestId: updatedCheckIn.guestId,
+                checkInId: updatedCheckIn.id,
+                subtotal: 0,
+                tax: 0,
+                total: 0,
+                status: 'UNPAID',
+            },
+        });
+
+        // Add Room Charge Item
+        await prisma.billItem.create({
+            data: {
+                billId: bill.id,
+                type: 'ROOM',
+                description: `${updatedCheckIn.room.category.name} - Room ${updatedCheckIn.room.roomNumber} (${nights} night${nights > 1 ? 's' : ''})`,
+                quantity: nights,
+                unitPrice: updatedCheckIn.room.category.basePrice,
+                total: roomCharges,
+                roomId: updatedCheckIn.roomId,
+            },
+        });
+
+        // Add Late Checkout Charge Item if applicable
+        if (updatedCheckIn.lateCheckout && updatedCheckIn.lateCharges > 0) {
+            await prisma.billItem.create({
+                data: {
+                    billId: bill.id,
+                    type: 'OTHER',
+                    description: 'Late Checkout Charges',
+                    quantity: 1,
+                    unitPrice: updatedCheckIn.lateCharges,
+                    total: updatedCheckIn.lateCharges,
+                },
+            });
+        }
+
+        // Add any existing UNBILLED extra service usages (if valid)
+        // For simplicity in this MVP, assuming extra services are added directly to bill or we'd query them here.
+
+        // Calculate Totals
+        const items = await prisma.billItem.findMany({ where: { billId: bill.id } });
+        const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+        const tax = subtotal * 0.05; // 5% Tax
+        const total = subtotal + tax;
+
+        await prisma.bill.update({
+            where: { id: bill.id },
+            data: { subtotal, tax, total },
+        });
+
         // Audit log
         const userId = request.headers.get('x-user-id');
         if (userId) {
