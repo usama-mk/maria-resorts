@@ -2,9 +2,25 @@ import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { successResponse, errorResponse } from '@/lib/utils';
 
-// GET all vendors
+// GET all vendors or single vendor details
 export async function GET(request: NextRequest) {
     try {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+
+        if (id) {
+            const vendor = await prisma.vendor.findUnique({
+                where: { id },
+                include: {
+                    transactions: {
+                        orderBy: { transactionDate: 'desc' },
+                    },
+                },
+            });
+            if (!vendor) return errorResponse('Vendor not found', 404);
+            return successResponse(vendor);
+        }
+
         const vendors = await prisma.vendor.findMany({
             include: {
                 _count: {

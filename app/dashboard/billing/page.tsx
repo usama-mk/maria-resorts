@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
+import { Spinner } from '@/components/ui/spinner';
 import { 
   Receipt, 
   CreditCard, 
@@ -40,7 +41,7 @@ export default function BillingPage() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, formState } = useForm();
 
   useEffect(() => {
     fetchBills();
@@ -147,7 +148,13 @@ export default function BillingPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={7} className="text-center h-24">Loading bills...</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center h-24">
+                     <div className="flex justify-center items-center h-full">
+                       <Spinner size="md" />
+                     </div>
+                  </TableCell>
+                </TableRow>
               ) : bills.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="text-center h-24 text-gray-500">No bills found.</TableCell></TableRow>
               ) : (
@@ -242,7 +249,7 @@ export default function BillingPage() {
               <Button type="button" variant="outline" onClick={() => setIsPaymentOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-green-600 hover:bg-green-700">
+              <Button type="submit" className="bg-green-600 hover:bg-green-700" loading={formState.isSubmitting}>
                 Confirm Payment
               </Button>
             </div>

@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, Filter } from 'lucide-react';
+import { Plus, Pencil, Trash2, Filter, Utensils } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -25,22 +26,41 @@ import {
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { cn } from '@/lib/utils'; // Keep import for badge logic later if needed
+import { cn } from '@/lib/utils';
 
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<any[]>([]);
+  const [activeCheckIns, setActiveCheckIns] = useState<any[]>([]);
+  const [menuItems, setMenuItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
+  
+  // Room Dialog State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<any>(null);
-  const [categories, setCategories] = useState<any[]>([]);
+  
+  // Service Dialog State
+  const [isServiceDialogOpen, setIsServiceDialogOpen] = useState(false);
+  const [selectedRoomService, setSelectedRoomService] = useState<any>(null); // { room, checkIn }
 
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const { register, handleSubmit, reset, setValue, formState } = useForm();
+  
+  // Separate form for service to avoid conflicts
+  const { 
+    register: registerService, 
+    handleSubmit: handleSubmitService, 
+    reset: resetService,
+    watch: watchService,
+    formState: serviceFormState
+  } = useForm();
 
-  // Load rooms and categories on mount
+  const serviceType = watchService('type', 'FOOD');
+
+  // Load data on mount
   useEffect(() => {
     fetchRooms();
-    fetchCategories(); // We'll need a way to get categories, ideally separate endpoint or extracting from rooms
+    fetchCheckIns();
+    fetchMenu();
   }, [statusFilter]);
 
   const fetchRooms = async () => {
@@ -62,31 +82,37 @@ export default function RoomsPage() {
     }
   };
 
-  // Mock fetching categories since we don't have a direct endpoint for just categories list easily exposed
-  // But actually the rooms API response might not include all categories if we only fetch rooms.
-  // Best practice: Let's assume there are common categories or fetch from a dedicated endpoint if we made one.
-  // For now, I'll hardcode the sample ones for the form, or extract unique ones from loaded rooms.
-  // Wait, I created room categories in seed, I should probably add an endpoint for them or just hardcode for MVP.
-  // Let's manually fetch a list of categories by hitting the DB directly? No, I must use API.
-  // I'll just use the distinct categories found in the room list for now or add a quick selector.
-  // Actually, I can fetch all rooms and extract categories.
-  const fetchCategories = async () => {
-      // In a real app we'd have /api/categories. For now, we'll hardcode the ones we seeded.
-      setCategories([
-          { id: '1', name: 'Single Room', basePrice: 5000 },
-          { id: '2', name: 'Double Room', basePrice: 7500 },
-          { id: '3', name: 'Deluxe Suite', basePrice: 12000 },
-          { id: '4', name: 'Executive Suite', basePrice: 18000 },
-      ]);
+  const fetchCheckIns = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/checkins?active=true', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setActiveCheckIns(response.data.data);
+    } catch (error) {
+      console.error('Failed to fetch check-ins');
+    }
+  };
+
+  const fetchMenu = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/food', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.data.data && response.data.data.items) {
+        setMenuItems(response.data.data.items);
+      }
+    } catch (error) {
+      console.error('Failed to fetch menu');
+    }
   };
 
   const onSubmit = async (data: any) => {
+    // ... existing room submit logic ...
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
-
-      // We need to map category name to categoryId or similar.
-      // Since the form will likely select from a dropdown, let's assume we select an ID.
 
       if (editingRoom) {
         await axios.put('/api/rooms', { ...data, id: editingRoom.id }, { headers });
@@ -105,6 +131,46 @@ export default function RoomsPage() {
     }
   };
 
+  const onServiceSubmit = async (data: any) => {
+    if (!selectedRoomService?.checkIn?.bills?.[0]) {
+      toast.error('No active bill found for this room');
+      return;
+    }
+
+    const billId = selectedRoomService.checkIn.bills[0].id;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const payload: any = {
+        billId,
+        quantity: parseInt(data.quantity),
+      };
+
+      if (data.type === 'FOOD') {
+        const foodItem = menuItems.find(i => i.id === data.foodId);
+        if (!foodItem) return;
+        payload.type = 'FOOD';
+        payload.description = foodItem.name;
+        payload.unitPrice = foodItem.price;
+        payload.foodId = foodItem.id;
+      } else {
+        payload.type = 'SERVICE';
+        payload.description = data.description;
+        payload.unitPrice = parseFloat(data.price);
+      }
+
+      await axios.put('/api/billing', payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      toast.success('Charge added to room bill');
+      setIsServiceDialogOpen(false);
+      resetService();
+    } catch (error: any) {
+      toast.error('Failed to add charge');
+    }
+  };
+
   const handleEdit = (room: any) => {
     setEditingRoom(room);
     setValue('roomNumber', room.roomNumber);
@@ -118,6 +184,16 @@ export default function RoomsPage() {
     setEditingRoom(null);
     reset();
     setIsDialogOpen(true);
+  };
+
+  const handleAddService = (room: any) => {
+    const checkIn = activeCheckIns.find(c => c.roomId === room.id);
+    if (!checkIn) {
+      toast.error('Could not find active check-in for this room');
+      return;
+    }
+    setSelectedRoomService({ room, checkIn });
+    setIsServiceDialogOpen(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -180,7 +256,11 @@ export default function RoomsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center h-24">Loading rooms...</TableCell>
+                  <TableCell colSpan={6} className="text-center h-24">
+                    <div className="flex justify-center items-center h-full">
+                       <Spinner size="md" />
+                    </div>
+                  </TableCell>
                 </TableRow>
               ) : rooms.length === 0 ? (
                 <TableRow>
@@ -194,7 +274,18 @@ export default function RoomsPage() {
                     <TableCell>{room.floor}</TableCell>
                     <TableCell>{formatCurrency(room.category?.basePrice || 0)}</TableCell>
                     <TableCell>{getStatusBadge(room.status)}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-2">
+                      {room.status === 'OCCUPIED' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                          onClick={() => handleAddService(room)}
+                          title="Add Room Charge/Service"
+                        >
+                          <Utensils className="h-4 w-4 mr-1" /> Add Charge
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(room)}>
                         <Pencil className="h-4 w-4 text-blue-600" />
                       </Button>
@@ -207,6 +298,7 @@ export default function RoomsPage() {
         </CardContent>
       </Card>
 
+      {/* Add/Edit Room Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -226,37 +318,12 @@ export default function RoomsPage() {
 
             <div className="grid gap-2">
               <Label htmlFor="categoryId">Room Category *</Label>
-              {/* In a real app, populate this dynamically from API */}
               <select
                 id="categoryId"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 {...register('categoryId', { required: true })}
               >
                 <option value="">Select Category</option>
-                {/* We map mock categories for now since we seeded them but don't have a list endpoint yet */}
-                <option value="Single Room">Single Room</option>
-                <option value="Double Room">Double Room</option>
-                <option value="Deluxe Suite">Deluxe Suite</option>
-                <option value="Executive Suite">Executive Suite</option>
-                {/* Note: The backend expects ID usually, but seeded category names are unique. 
-                    Wait, my backend expects categoryId (UUID).
-                    I need to fetch categories properly or user won't be able to create rooms.
-                    I'll need to fetch categories from the existing rooms to get their IDs or add a categories endpoint.
-                    
-                    Actually, let's just make a quick improvement to the backend or use the existing rooms to find category IDs.
-                    For this MVP step, I will simplify: I'll assume the user is EDITING mostly.
-                    To fix creation: I will update the SELECT to use hardcoded IDs if I knew them, OR I'll assume the backend can look up by name? No.
-                    
-                    SOLUTION: I'll fetch the first room of each category to scrape IDs, or just rely on the user having seeded data.
-                    Let's check the seed file for IDs... they are auto-generated UUIDs.
-                    
-                    I will create a helper to fetch categories in the background or just list them if I had a route.
-                    Wait, I implemented a GET /api/food but not /api/categories? 
-                    Ah, I can use the `categories` from the `GET /api/food`?? No that's food categories.
-                    
-                    Let's check `GET /api/rooms`... it returns rooms with `category`.
-                    I will extract unique categories from the `rooms` list I just fetched! Smart.
-                */}
                 {rooms.reduce((acc: any[], room) => {
                     if (!acc.find(c => c.id === room.categoryId)) {
                         acc.push(room.category);
@@ -290,8 +357,74 @@ export default function RoomsPage() {
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" loading={formState.isSubmitting}>
                 {editingRoom ? 'Update Room' : 'Create Room'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Service Dialog */}
+      <Dialog open={isServiceDialogOpen} onOpenChange={setIsServiceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Charge to Room {selectedRoomService?.room?.roomNumber}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitService(onServiceSubmit)} className="space-y-4 pt-4">
+            <div className="grid gap-2">
+              <Label htmlFor="type">Charge Type</Label>
+              <select
+                id="type"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                {...registerService('type')}
+                defaultValue="FOOD"
+              >
+                <option value="FOOD">Food / Menu Item</option>
+                <option value="SERVICE">Custom Service / Other</option>
+              </select>
+            </div>
+
+            {serviceType === 'FOOD' ? (
+              <div className="grid gap-2">
+                <Label htmlFor="foodId">Select Item</Label>
+                <select
+                  id="foodId"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  {...registerService('foodId')}
+                >
+                  <option value="">Select food item...</option>
+                  {menuItems.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} - {formatCurrency(item.price)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Input id="description" placeholder="e.g. Laundry, Extra Bed" {...registerService('description')} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="price">Price</Label>
+                  <Input id="price" type="number" step="0.01" {...registerService('price')} />
+                </div>
+              </>
+            )}
+
+            <div className="grid gap-2">
+              <Label htmlFor="quantity">Quantity</Label>
+              <Input id="quantity" type="number" defaultValue={1} {...registerService('quantity', { required: true, min: 1 })} />
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsServiceDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-green-600 hover:bg-green-700" loading={serviceFormState.isSubmitting}>
+                Add to Bill
               </Button>
             </div>
           </form>

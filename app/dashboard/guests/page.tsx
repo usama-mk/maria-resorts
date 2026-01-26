@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
+import { Spinner } from '@/components/ui/spinner';
 import { Plus, Search, Pencil, Trash2, Mail, Phone, User, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +33,7 @@ export default function GuestsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState<any>(null);
 
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const { register, handleSubmit, reset, setValue, formState } = useForm();
 
   const fetchGuests = async () => {
     try {
@@ -118,9 +119,7 @@ export default function GuestsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="text-center py-8">Loading guests...</div>
-          ) : (
+
             <Table>
               <TableHeader>
                 <TableRow>
@@ -132,7 +131,15 @@ export default function GuestsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {guests.length === 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center h-24">
+                      <div className="flex justify-center items-center h-full">
+                        <Spinner size="md" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : guests.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center h-24 text-gray-500">
                       No guests found.
@@ -182,7 +189,6 @@ export default function GuestsPage() {
                 )}
               </TableBody>
             </Table>
-          )}
         </CardContent>
       </Card>
 
@@ -233,7 +239,7 @@ export default function GuestsPage() {
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" loading={formState.isSubmitting}>
                 {editingGuest ? 'Update Guest' : 'Create Guest'}
               </Button>
             </div>

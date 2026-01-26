@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
+import { Spinner } from '@/components/ui/spinner';
 import { Plus, Utensils, Coffee, Edit, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,7 +34,7 @@ export default function FoodPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, formState } = useForm();
 
   useEffect(() => {
     fetchMenu();
@@ -86,6 +87,11 @@ export default function FoodPage() {
         </Button>
       </div>
 
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+           <Spinner size="lg" className="border-t-orange-600" />
+        </div>
+      ) : (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {categories.map((cat) => (
           <Card key={cat.id}>
@@ -113,6 +119,7 @@ export default function FoodPage() {
           </Card>
         ))}
       </div>
+      )}
 
        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
@@ -152,7 +159,7 @@ export default function FoodPage() {
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-orange-600 hover:bg-orange-700">
+              <Button type="submit" className="bg-orange-600 hover:bg-orange-700" loading={formState.isSubmitting}>
                 Save Item
               </Button>
             </div>

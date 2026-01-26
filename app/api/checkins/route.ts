@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
                     },
                 },
                 reservation: true,
+                bills: true,
             },
             orderBy: { checkInTime: 'desc' },
         });

@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
+import { Spinner } from '@/components/ui/spinner';
 import { Plus, Search, Pencil, Trash2, Truck, Phone, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import Link from 'next/link';
 import {
   Table,
   TableBody,
@@ -28,7 +30,7 @@ export default function VendorsPage() {
   const [vendors, setVendors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, formState } = useForm();
 
   useEffect(() => {
     fetchVendors();
@@ -91,7 +93,13 @@ export default function VendorsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center h-24">Loading vendors...</TableCell></TableRow>
+                 <TableRow>
+                   <TableCell colSpan={5} className="text-center h-24">
+                     <div className="flex justify-center items-center h-full">
+                       <Spinner size="md" />
+                     </div>
+                   </TableCell>
+                 </TableRow>
               ) : vendors.length === 0 ? (
                 <TableRow><TableCell colSpan={5} className="text-center h-24 text-gray-500">No vendors found.</TableCell></TableRow>
               ) : (
@@ -110,6 +118,11 @@ export default function VendorsPage() {
                     </TableCell>
                     <TableCell>{vendor.services}</TableCell>
                     <TableCell>{vendor._count?.transactions || 0} Records</TableCell>
+                    <TableCell>
+                      <Link href={`/dashboard/vendors/${vendor.id}`}>
+                        <Button variant="outline" size="sm">View Ledger</Button>
+                      </Link>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -159,7 +172,7 @@ export default function VendorsPage() {
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" loading={formState.isSubmitting}>
                 Create Vendor
               </Button>
             </div>

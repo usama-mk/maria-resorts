@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Plus, Search, Calendar, User, BedDouble, XCircle, CheckCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -33,7 +34,7 @@ export default function ReservationsPage() {
   const [guests, setGuests] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
   
-  const { register, handleSubmit, reset, watch, setValue } = useForm();
+  const { register, handleSubmit, reset, watch, setValue, formState } = useForm();
   
   // Fetch reservations on mount
   useEffect(() => {
@@ -157,7 +158,11 @@ export default function ReservationsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center h-24">Loading reservations...</TableCell>
+                  <TableCell colSpan={6} className="text-center h-24">
+                    <div className="flex justify-center items-center h-full">
+                      <Spinner size="md" />
+                    </div>
+                  </TableCell>
                 </TableRow>
               ) : reservations.length === 0 ? (
                 <TableRow>
@@ -179,7 +184,7 @@ export default function ReservationsPage() {
                       </div>
                     </TableCell>
                     <TableCell>{new Date(res.checkInDate).toLocaleDateString()}</TableCell>
-                    <TableCell>{new Date(res.checkOutDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(res.expectedCheckOut).toLocaleDateString()}</TableCell>
                     <TableCell>{getStatusBadge(res.status)}</TableCell>
                     <TableCell className="text-right">
                       {res.status === 'RESERVED' && (
@@ -228,8 +233,8 @@ export default function ReservationsPage() {
                 <Input type="date" id="checkInDate" {...register('checkInDate', { required: true })} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="checkOutDate">Check Out Date *</Label>
-                <Input type="date" id="checkOutDate" {...register('checkOutDate', { required: true })} />
+                <Label htmlFor="expectedCheckOut">Check Out Date *</Label>
+                <Input type="date" id="expectedCheckOut" {...register('expectedCheckOut', { required: true })} />
               </div>
             </div>
 
@@ -255,7 +260,7 @@ export default function ReservationsPage() {
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" loading={formState.isSubmitting}>
                 Confirm Booking
               </Button>
             </div>
