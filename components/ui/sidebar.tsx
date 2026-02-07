@@ -107,6 +107,12 @@ export function Sidebar({ userRole }: SidebarNavProps) {
       icon: FileBarChart,
       roles: ['ADMIN', 'ACCOUNTANT'],
     },
+    {
+      title: 'Expenses',
+      href: '/dashboard/expenses',
+      icon: ShoppingBag, // Using ShoppingBag as a placeholder, maybe Banknote if available but sticking to imported icons
+      roles: ['ADMIN', 'ACCOUNTANT', 'FRONTDESK'],
+    },
   ];
 
   const filteredNavItems = navItems.filter(item => 
