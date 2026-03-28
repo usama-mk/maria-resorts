@@ -62,7 +62,7 @@ export function generateBillNumber(): string {
 }
 
 // Calculate tax (adjustable percentage)
-export function calculateTax(subtotal: number, taxRate: number = 0.05): number {
+export function calculateTax(subtotal: number, taxRate: number = 0.10): number {
     return subtotal * taxRate;
 }
 

@@ -4,13 +4,15 @@ import { prisma } from '@/lib/prisma';
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
-        const date = searchParams.get('date');
+        const startDateParam = searchParams.get('startDate');
+        const endDateParam = searchParams.get('endDate');
 
         const whereClause: any = {};
-        if (date) {
-            const startDate = new Date(date);
+
+        if (startDateParam && endDateParam) {
+            const startDate = new Date(startDateParam);
             startDate.setHours(0, 0, 0, 0);
-            const endDate = new Date(date);
+            const endDate = new Date(endDateParam);
             endDate.setHours(23, 59, 59, 999);
 
             whereClause.date = {
@@ -34,7 +36,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { category, amount, description, date } = body;
+        const { category, amount, description, date, paymentMethod } = body;
 
         if (!category || !amount || !date) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -45,6 +47,7 @@ export async function POST(request: Request) {
                 category,
                 amount: parseFloat(amount),
                 description,
+                paymentMethod: paymentMethod || 'CASH',
                 date: new Date(date),
             },
         });

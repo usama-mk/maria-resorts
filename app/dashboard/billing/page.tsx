@@ -140,6 +140,8 @@ export default function BillingPage() {
                 <TableHead>Bill #</TableHead>
                 <TableHead>Guest</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>Room Charges</TableHead>
+                <TableHead>Restaurant Bill</TableHead>
                 <TableHead>Total Amount</TableHead>
                 <TableHead>Paid</TableHead>
                 <TableHead>Status</TableHead>
@@ -149,22 +151,39 @@ export default function BillingPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center h-24">
+                  <TableCell colSpan={9} className="text-center h-24">
                      <div className="flex justify-center items-center h-full">
                        <Spinner size="md" />
                      </div>
                   </TableCell>
                 </TableRow>
               ) : bills.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center h-24 text-gray-500">No bills found.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center h-24 text-gray-500">No bills found.</TableCell></TableRow>
               ) : (
                 bills.map((bill) => {
                   const totalPaid = bill.payments.reduce((sum: number, p: any) => sum + p.amount, 0);
+                  const roomTotal = bill.items
+                    ?.filter((item: any) => item.type === 'ROOM')
+                    .reduce((sum: number, item: any) => sum + item.total, 0) || 0;
+                  const restaurantTotal = bill.items
+                    ?.filter((item: any) => item.type === 'FOOD')
+                    .reduce((sum: number, item: any) => sum + item.total, 0) || 0;
+                    
                   return (
                     <TableRow key={bill.id}>
                       <TableCell className="font-mono">{bill.billNumber}</TableCell>
                       <TableCell>{bill.guest?.name}</TableCell>
                       <TableCell>{new Date(bill.generatedAt).toLocaleDateString()}</TableCell>
+                      <TableCell>{formatCurrency(roomTotal)}</TableCell>
+                      <TableCell>
+                        {restaurantTotal > 0 ? (
+                          <Link href={`/dashboard/billing/${bill.id}/restaurant`} target="_blank" className="text-blue-600 hover:underline">
+                            {formatCurrency(restaurantTotal)}
+                          </Link>
+                        ) : (
+                          formatCurrency(restaurantTotal)
+                        )}
+                      </TableCell>
                       <TableCell className="font-bold">{formatCurrency(bill.total)}</TableCell>
                       <TableCell>{formatCurrency(totalPaid)}</TableCell>
                       <TableCell>{getStatusBadge(bill.status)}</TableCell>

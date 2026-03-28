@@ -139,7 +139,8 @@ export default function BillDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {bill.items.map((item: any) => (
+                {/* Regular Items (Room Rent, Services) */}
+                {bill.items.filter((i: any) => i.type !== 'FOOD').map((item: any) => (
                   <tr key={item.id}>
                     <td className="py-3">
                       <p className="font-medium text-gray-900">{item.description}</p>
@@ -150,6 +151,26 @@ export default function BillDetailPage() {
                     <td className="py-3 text-right font-medium">{formatCurrency(item.total)}</td>
                   </tr>
                 ))}
+                
+                {/* Consolidated Restaurant Charges */}
+                {(() => {
+                  const foodItems = bill.items.filter((i: any) => i.type === 'FOOD');
+                  if (foodItems.length === 0) return null;
+                  
+                  const foodTotal = foodItems.reduce((sum: number, item: any) => sum + item.total, 0);
+                  
+                  return (
+                    <tr>
+                      <td className="py-3">
+                        <p className="font-medium text-gray-900">Restaurant Charges (Food Total)</p>
+                        <p className="text-xs text-gray-500">See separate restaurant bill for details</p>
+                      </td>
+                      <td className="py-3 text-center">-</td>
+                      <td className="py-3 text-right">-</td>
+                      <td className="py-3 text-right font-medium">{formatCurrency(foodTotal)}</td>
+                    </tr>
+                  );
+                })()}
               </tbody>
             </table>
           </div>
@@ -184,8 +205,8 @@ export default function BillDetailPage() {
                 <span className="text-gray-600">Subtotal</span>
                 <span className="font-medium">{formatCurrency(bill.subtotal)}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Tax</span>
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-gray-600">Service Charge (10%)</span>
                 <span className="font-medium">{formatCurrency(bill.tax)}</span>
               </div>
               <Separator className="my-2" />

@@ -15,7 +15,8 @@ import {
   LogOut,
   Menu,
   X,
-  UserCog
+  UserCog,
+  Briefcase
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -112,6 +113,12 @@ export function Sidebar({ userRole }: SidebarNavProps) {
       href: '/dashboard/expenses',
       icon: ShoppingBag, // Using ShoppingBag as a placeholder, maybe Banknote if available but sticking to imported icons
       roles: ['ADMIN', 'ACCOUNTANT', 'FRONTDESK'],
+    },
+    {
+      title: 'Staff',
+      href: '/dashboard/staff',
+      icon: Briefcase,
+      roles: ['ADMIN', 'ACCOUNTANT'],
     },
   ];
 

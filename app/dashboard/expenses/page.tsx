@@ -15,14 +15,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
-import { Loader2 } from 'lucide-react';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { Loader2, Calendar as CalendarIcon } from 'lucide-react';
 
 interface Expense {
   id: string;
   category: string;
   amount: number;
   description: string | null;
+  paymentMethod: string;
   date: string;
 }
 
@@ -39,14 +40,18 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
   const [userRole, setUserRole] = useState<string>('');
+
+  // Date Filters
+  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
+  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
 
   // Form states
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [customCategory, setCustomCategory] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 16)); // Format for datetime-local
 
   useEffect(() => {
@@ -60,18 +65,25 @@ export default function ExpensesPage() {
         // ignore
       }
     }
-  }, [filterDate]);
+  }, [startDate, endDate]);
 
   const fetchExpenses = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`/api/expenses?date=${filterDate}`);
+      const response = await axios.get(`/api/expenses?startDate=${startDate}&endDate=${endDate}`);
       setExpenses(response.data);
     } catch (error) {
       toast.error('Failed to load expenses');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleThisMonth = () => {
+    const start = startOfMonth(new Date());
+    const end = endOfMonth(new Date());
+    setStartDate(format(start, 'yyyy-MM-dd'));
+    setEndDate(format(end, 'yyyy-MM-dd'));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,6 +103,7 @@ export default function ExpensesPage() {
         category: finalCategory,
         amount,
         description,
+        paymentMethod,
         date,
       });
 
@@ -101,6 +114,7 @@ export default function ExpensesPage() {
       setCustomCategory('');
       setAmount('');
       setDescription('');
+      setPaymentMethod('CASH');
       setDate(new Date().toISOString().slice(0, 16));
       
       // Refresh list
@@ -130,21 +144,38 @@ export default function ExpensesPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Expenses</h1>
-        <div className="flex items-center gap-2">
-            <Label htmlFor="filterDate" className="whitespace-nowrap">Filter Date:</Label>
-            <Input
-                id="filterDate"
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                className="w-auto"
-            />
+        
+        {/* Date Filters */}
+        <div className="flex flex-wrap items-center gap-2 bg-white p-2 border rounded-md shadow-sm">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="startDate" className="whitespace-nowrap text-xs text-gray-500 uppercase">From:</Label>
+              <Input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-auto h-8 text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="endDate" className="whitespace-nowrap text-xs text-gray-500 uppercase">To:</Label>
+              <Input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-auto h-8 text-sm"
+              />
+            </div>
+            <Button variant="outline" size="sm" onClick={handleThisMonth} className="h-8">
+              This Month
+            </Button>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">
         {/* Expense Form */}
-        <Card>
+        <Card className="h-fit">
           <CardHeader>
             <CardTitle>Add New Expense</CardTitle>
           </CardHeader>
@@ -195,6 +226,20 @@ export default function ExpensesPage() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="paymentMethod">Payment Method</Label>
+                <select
+                  id="paymentMethod"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  required
+                >
+                  <option value="CASH">Cash</option>
+                  <option value="ONLINE">Online</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="date">Date & Time</Label>
                 <Input
                   id="date"
@@ -234,11 +279,11 @@ export default function ExpensesPage() {
             <Card>
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
-                        Total Expenses ({format(new Date(filterDate), 'MMM d, yyyy')})
+                        Total Expenses ({format(new Date(startDate), 'MMM d, yy')} - {format(new Date(endDate), 'MMM d, yy')})
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-3xl font-bold text-red-600">
                         {new Intl.NumberFormat('en-PK', {
                             style: 'currency',
                             currency: 'PKR'
@@ -257,16 +302,17 @@ export default function ExpensesPage() {
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                 </div>
                 ) : expenses.length === 0 ? (
-                <div className="text-center text-sm text-gray-500 py-4">
-                    No expenses found for this date.
+                <div className="text-center text-sm text-gray-500 py-8">
+                    No expenses found for this date range.
                 </div>
                 ) : (
                 <div className="rounded-md border">
                     <Table>
                     <TableHeader>
                         <TableRow>
-                        <TableHead>Time</TableHead>
+                        <TableHead>Date & Time</TableHead>
                         <TableHead>Category</TableHead>
+                        <TableHead>Method</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                         {userRole === 'ADMIN' && <TableHead className="w-[50px]"></TableHead>}
                         </TableRow>
@@ -274,20 +320,26 @@ export default function ExpensesPage() {
                     <TableBody>
                         {expenses.map((expense) => (
                         <TableRow key={expense.id}>
-                            <TableCell className="font-medium whitespace-nowrap">
-                            {format(new Date(expense.date), 'h:mm a')}
+                            <TableCell className="whitespace-nowrap">
+                              <div className="font-medium">{format(new Date(expense.date), 'MMM d, yyyy')}</div>
+                              <div className="text-xs text-gray-500">{format(new Date(expense.date), 'h:mm a')}</div>
                             </TableCell>
                             <TableCell>
                             <div className="flex flex-col">
-                                <span>{expense.category}</span>
+                                <span className="font-medium">{expense.category}</span>
                                 {expense.description && (
-                                <span className="text-xs text-gray-500 truncate max-w-[150px]">
+                                <span className="text-xs text-gray-500 truncate max-w-[200px]">
                                     {expense.description}
                                 </span>
                                 )}
                             </div>
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell>
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${expense.paymentMethod === 'ONLINE' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
+                                {expense.paymentMethod || 'CASH'}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
                             {new Intl.NumberFormat('en-PK', {
                                 style: 'currency',
                                 currency: 'PKR'

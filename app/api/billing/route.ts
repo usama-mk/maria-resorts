@@ -192,11 +192,10 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// PUT add item to bill or update bill
 export async function PUT(request: NextRequest) {
     try {
         const body = await request.json();
-        const { billId, type, description, quantity, unitPrice, foodId, serviceId } = body;
+        const { billId, type, description, quantity, unitPrice, foodId, serviceId, qtNumber } = body;
 
         if (!billId) {
             return errorResponse('Bill ID is required');
@@ -219,6 +218,7 @@ export async function PUT(request: NextRequest) {
                     total: quantity * unitPrice,
                     foodId,
                     serviceId,
+                    qtNumber: qtNumber || null,
                 },
             });
         }

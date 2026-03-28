@@ -192,6 +192,7 @@ model BillItem {
   roomId      String?
   foodId      String?
   serviceId   String?
+  qtNumber    String?
   createdAt   DateTime     @default(now())
 
   bill    Bill             @relation(fields: [billId], references: [id], onDelete: Cascade)
@@ -343,13 +344,51 @@ model AuditLog {
 // ============================================
 
 model Expense {
+  id            String   @id @default(uuid())
+  category      String
+  amount        Float
+  description   String?
+  paymentMethod String   @default("CASH")
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("expenses")
+}
+
+// ============================================
+// Staff Management
+// ============================================
+
+model Staff {
   id          String   @id @default(uuid())
-  category    String
-  amount      Float
-  description String?
-  date        DateTime @default(now())
+  name        String
+  position    String?
+  salary      Float    @default(0) // baseline assigned salary
+  balance     Float    @default(0) // Current balance: positive means hotel owes staff, negative means staff owes hotel (advance)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@map("expenses")
+  transactions StaffTransaction[]
+
+  @@map("staff")
+}
+
+model StaffTransaction {
+  id          String               @id @default(uuid())
+  staffId     String
+  type        StaffTransactionType
+  amount      Float
+  description String?
+  date        DateTime             @default(now())
+  createdAt   DateTime             @default(now())
+
+  staff       Staff                @relation(fields: [staffId], references: [id])
+
+  @@map("staff_transactions")
+}
+
+enum StaffTransactionType {
+  SALARY_DUE
+  PAYMENT
 }

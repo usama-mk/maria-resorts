@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
             // Auto-fill missing fields from reservation
             if (!guestId) guestId = reservation.guestId;
             if (!roomId) roomId = reservation.roomId;
-            if (!expectedCheckOut) expectedCheckOut = reservation.checkOut;
+            if (!expectedCheckOut) expectedCheckOut = reservation.expectedCheckOut;
             // Use reservation advance payment if not overridden
             if (advancePayment === undefined && reservation.advancePayment) {
                 advancePayment = reservation.advancePayment;
@@ -292,7 +292,7 @@ export async function PUT(request: NextRequest) {
         // Calculate Totals
         const items = await prisma.billItem.findMany({ where: { billId: bill.id } });
         const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-        const tax = subtotal * 0.05; // 5% Tax
+        const tax = subtotal * 0.10; // 10% Service Charge
         const total = subtotal + tax;
 
         // Check Payment Status
