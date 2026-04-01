@@ -97,14 +97,7 @@ export default function LoginPage() {
               {loading ? 'Signing in...' : 'Sign in'}
             </Button>
           </form>
-          
-          <div className="text-center text-sm text-muted-foreground bg-gray-50 p-4 rounded-lg border border-gray-100">
-            <p className="font-semibold mb-2">Demo Credentials:</p>
-            <div className="space-y-1 text-xs">
-              <p>Admin: <span className="font-mono">admin@mariaresorts.com</span> / <span className="font-mono">admin123</span></p>
-              <p>Front Desk: <span className="font-mono">frontdesk@mariaresorts.com</span> / <span className="font-mono">frontdesk123</span></p>
-            </div>
-          </div>
+
         </div>
       </div>
       <div className="hidden bg-gray-100 lg:block relative">
