@@ -140,7 +140,8 @@ export async function POST(request: NextRequest) {
             });
 
             const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-            const tax = calculateTax(subtotal);
+            const foodSubtotal = items.filter(i => i.type === 'FOOD').reduce((sum, item) => sum + item.total, 0);
+            const tax = calculateTax(foodSubtotal);
             const total = subtotal + tax;
 
             await prisma.bill.update({
@@ -235,7 +236,8 @@ export async function PUT(request: NextRequest) {
         });
 
         const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-        const tax = calculateTax(subtotal);
+        const foodSubtotal = items.filter(i => i.type === 'FOOD').reduce((sum, item) => sum + item.total, 0);
+        const tax = calculateTax(foodSubtotal);
         const total = subtotal + tax;
 
         const updatedBill = await prisma.bill.update({

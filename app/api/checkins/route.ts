@@ -70,7 +70,10 @@ export async function POST(request: NextRequest) {
         }
 
         // Verify room is available
-        const room = await prisma.room.findUnique({ where: { id: roomId } });
+        const room = await prisma.room.findUnique({
+            where: { id: roomId },
+            include: { category: true }
+        });
         if (!room) {
             return errorResponse('Room not found', 404);
         }
@@ -127,6 +130,32 @@ export async function POST(request: NextRequest) {
                 total: 0,
                 status: 'UNPAID', // Will update if advance payment covers it (unlikely at start)
             },
+        });
+
+        // Add Room Charge immediately
+        const nights = Math.max(1, Math.ceil((new Date(expectedCheckOut).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)));
+        const pricePerNight = customPrice ? parseFloat(customPrice) : room.category.basePrice;
+        const roomCharges = nights * pricePerNight;
+        const rateDescription = customPrice ? ` (Custom Rate: ${customPrice})` : '';
+
+        await prisma.billItem.create({
+            data: {
+                billId: bill.id,
+                type: 'ROOM',
+                description: `${room.category.name} - Room ${room.roomNumber} (${nights} night${nights > 1 ? 's' : ''})${rateDescription}`,
+                quantity: nights,
+                unitPrice: pricePerNight,
+                total: roomCharges,
+                roomId: roomId,
+            },
+        });
+
+        await prisma.bill.update({
+            where: { id: bill.id },
+            data: {
+                subtotal: roomCharges,
+                total: roomCharges
+            }
         });
 
         // Record Advance Payment if any
@@ -267,6 +296,11 @@ export async function PUT(request: NextRequest) {
         const roomCharges = nights * pricePerNight;
         const rateDescription = updatedCheckIn.customRate ? ` (Custom Rate: ${updatedCheckIn.customRate})` : '';
 
+        // Delete existing room charges for this bill to recalculate accurately
+        await prisma.billItem.deleteMany({
+            where: { billId: bill.id, type: 'ROOM' }
+        });
+
         // Add Room Charge Item
         await prisma.billItem.create({
             data: {
@@ -297,7 +331,8 @@ export async function PUT(request: NextRequest) {
         // Calculate Totals
         const items = await prisma.billItem.findMany({ where: { billId: bill.id } });
         const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-        const tax = subtotal * 0.10; // 10% Service Charge
+        const foodSubtotal = items.filter(i => i.type === 'FOOD').reduce((sum, item) => sum + item.total, 0);
+        const tax = foodSubtotal * 0.10; // 10% Service Charge ONLY on FOOD
         const total = subtotal + tax;
 
         // Check Payment Status
