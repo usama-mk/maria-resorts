@@ -36,7 +36,7 @@ export default function CheckInsPage() {
   const [rooms, setRooms] = useState<any[]>([]);
   const [reservations, setReservations] = useState<any[]>([]);
 
-  const { register: registerCheckIn, handleSubmit: handleSubmitCheckIn, reset: resetCheckIn } = useForm();
+  const { register: registerCheckIn, handleSubmit: handleSubmitCheckIn, reset: resetCheckIn, formState: { isSubmitting: isCheckingIn } } = useForm();
 
   useEffect(() => {
     fetchActiveStays();
@@ -277,7 +277,7 @@ export default function CheckInsPage() {
               <Button type="button" variant="outline" onClick={() => setIsCheckInOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-green-600 hover:bg-green-700">
+              <Button type="submit" className="bg-green-600 hover:bg-green-700" loading={isCheckingIn}>
                 Complete Check-In
               </Button>
             </div>

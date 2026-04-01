@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, DollarSign, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 interface Transaction {
@@ -33,6 +34,7 @@ export default function StaffDetailsPage({ params }: { params: Promise<{ id: str
   // Modal states
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [transactionType, setTransactionType] = useState<"SALARY_DUE" | "PAYMENT">("PAYMENT");
+  const [submitting, setSubmitting] = useState(false);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
 
@@ -57,6 +59,7 @@ export default function StaffDetailsPage({ params }: { params: Promise<{ id: str
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || isNaN(Number(amount))) return;
+    setSubmitting(true);
 
     try {
       const res = await fetch(`/api/staff/${id}/transactions`, {
@@ -79,6 +82,8 @@ export default function StaffDetailsPage({ params }: { params: Promise<{ id: str
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -249,14 +254,13 @@ export default function StaffDetailsPage({ params }: { params: Promise<{ id: str
                 >
                   Cancel
                 </button>
-                <button
+                <Button
                   type="submit"
-                  className={`px-4 py-2 text-white rounded-lg transition-colors ${
-                    transactionType === 'SALARY_DUE' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
-                  }`}
+                  loading={submitting}
+                  className={transactionType === 'SALARY_DUE' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
                 >
                   Confirm {transactionType === 'SALARY_DUE' ? 'Due' : 'Payment'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

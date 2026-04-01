@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Users, Search, MoreVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Staff {
   id: string;
@@ -16,6 +17,7 @@ export default function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   
   // Form State
   const [name, setName] = useState("");
@@ -42,6 +44,7 @@ export default function StaffPage() {
 
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       const res = await fetch("/api/staff", {
         method: "POST",
@@ -60,6 +63,8 @@ export default function StaffPage() {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -180,12 +185,13 @@ export default function StaffPage() {
                 >
                   Cancel
                 </button>
-                <button
+                <Button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  loading={submitting}
+                  className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700"
                 >
                   Add Staff
-                </button>
+                </Button>
               </div>
             </form>
           </div>

@@ -32,8 +32,8 @@ export default function FoodPage() {
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
   const [selectedItemForOrder, setSelectedItemForOrder] = useState<any>(null);
 
-  const { register: registerMenu, handleSubmit: handleSubmitMenu, reset: resetMenu } = useForm();
-  const { register: registerOrder, handleSubmit: handleSubmitOrder, reset: resetOrder } = useForm();
+  const { register: registerMenu, handleSubmit: handleSubmitMenu, reset: resetMenu, formState: { isSubmitting: isAddingMenu } } = useForm();
+  const { register: registerOrder, handleSubmit: handleSubmitOrder, reset: resetOrder, formState: { isSubmitting: isAddingOrder } } = useForm();
 
   useEffect(() => {
     fetchMenu();
@@ -217,7 +217,7 @@ export default function FoodPage() {
               <Button type="button" variant="outline" onClick={() => setIsMenuDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-orange-600 hover:bg-orange-700">
+              <Button type="submit" className="bg-orange-600 hover:bg-orange-700" loading={isAddingMenu}>
                 Save Item
               </Button>
             </div>
@@ -282,7 +282,7 @@ export default function FoodPage() {
               <Button type="button" variant="outline" onClick={() => setIsOrderDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-orange-600 hover:bg-orange-700" disabled={activeCheckIns.length === 0}>
+              <Button type="submit" className="bg-orange-600 hover:bg-orange-700" disabled={activeCheckIns.length === 0} loading={isAddingOrder}>
                 Add to Bill
               </Button>
             </div>

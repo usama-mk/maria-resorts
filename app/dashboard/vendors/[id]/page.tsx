@@ -44,7 +44,7 @@ export default function VendorDetailPage() {
   const [isTxOpen, setIsTxOpen] = useState(false);
   const [txType, setTxType] = useState<'BILL_RECEIVED' | 'PAYMENT_MADE'>('BILL_RECEIVED');
 
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm();
 
   useEffect(() => {
     if (id) fetchVendor();
@@ -240,7 +240,7 @@ export default function VendorDetailPage() {
                <Button type="button" variant="outline" onClick={() => setIsTxOpen(false)}>
                  Cancel
                </Button>
-               <Button type="submit" className={txType === 'BILL_RECEIVED' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}>
+               <Button type="submit" loading={isSubmitting} className={txType === 'BILL_RECEIVED' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}>
                  Confirm
                </Button>
             </div>
