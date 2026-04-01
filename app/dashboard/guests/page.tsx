@@ -32,8 +32,18 @@ export default function GuestsPage() {
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState<any>(null);
+  const [userRole, setUserRole] = useState('');
 
   const { register, handleSubmit, reset, setValue, formState } = useForm();
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        setUserRole(JSON.parse(userStr).role);
+      } catch (e) {}
+    }
+  }, []);
 
   const fetchGuests = async () => {
     try {
@@ -176,13 +186,15 @@ export default function GuestsPage() {
                         {guest.address || '-'}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(guest)}
-                        >
-                          <Pencil className="h-4 w-4 text-blue-600" />
-                        </Button>
+                        {userRole === 'ADMIN' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(guest)}
+                          >
+                            <Pencil className="h-4 w-4 text-blue-600" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

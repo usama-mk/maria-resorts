@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyUserFromRequest, hasRole } from '@/lib/auth';
 
 export async function GET(
     request: Request,
@@ -38,6 +39,10 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const authUser = await verifyUserFromRequest(request as any);
+        if (!hasRole(authUser, ['ADMIN'])) {
+            return NextResponse.json({ error: 'Admin permission required to make changes' }, { status: 403 });
+        }
         const { id } = await params;
         const body = await request.json();
         const { name, position, salary } = body;
@@ -66,6 +71,10 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const authUser = await verifyUserFromRequest(request as any);
+        if (!hasRole(authUser, ['ADMIN'])) {
+            return NextResponse.json({ error: 'Admin permission required to make changes' }, { status: 403 });
+        }
         const { id } = await params;
         await prisma.staff.delete({
             where: { id },

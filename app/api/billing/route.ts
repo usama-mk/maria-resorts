@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { successResponse, errorResponse } from '@/lib/utils';
 import { generateBillNumber, calculateRoomCharges, calculateTax } from '@/lib/utils';
+import { verifyUserFromRequest, hasRole } from '@/lib/auth';
 
 // GET all bills or search
 export async function GET(request: NextRequest) {
@@ -194,6 +195,11 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
     try {
+        const user = await verifyUserFromRequest(request);
+        if (!hasRole(user, ['ADMIN'])) {
+            return errorResponse('Admin permission required to modify bills', 403);
+        }
+
         const body = await request.json();
         const { billId, type, description, quantity, unitPrice, foodId, serviceId, qtNumber } = body;
 

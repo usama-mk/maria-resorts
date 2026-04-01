@@ -7,15 +7,28 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { formatCurrency } from '@/lib/utils';
 import { Calendar } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { useRouter } from 'next/navigation';
 
 export default function ReportsPage() {
+  const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
 
   useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      if (user.role !== 'ADMIN') {
+        router.push('/dashboard');
+        return;
+      }
+    } else {
+        router.push('/login');
+        return;
+    }
     fetchReport();
-  }, [month]);
+  }, [month, router]);
 
   const fetchReport = async () => {
     try {

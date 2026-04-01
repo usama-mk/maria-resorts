@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { successResponse, errorResponse } from '@/lib/utils';
+import { verifyUserFromRequest, hasRole } from '@/lib/auth';
 
 // POST record payment
 export async function POST(request: NextRequest) {

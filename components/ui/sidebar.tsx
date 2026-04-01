@@ -106,7 +106,7 @@ export function Sidebar({ userRole }: SidebarNavProps) {
       title: 'Reports',
       href: '/dashboard/reports',
       icon: FileBarChart,
-      roles: ['ADMIN', 'ACCOUNTANT'],
+      roles: ['ADMIN'],
     },
     {
       title: 'Expenses',

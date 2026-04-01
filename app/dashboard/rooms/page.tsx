@@ -35,6 +35,8 @@ export default function RoomsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   
+  const [userRole, setUserRole] = useState('');
+  
   // Room Dialog State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<any>(null);
@@ -42,6 +44,13 @@ export default function RoomsPage() {
   // Service Dialog State
   const [isServiceDialogOpen, setIsServiceDialogOpen] = useState(false);
   const [selectedRoomService, setSelectedRoomService] = useState<any>(null); // { room, checkIn }
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try { setUserRole(JSON.parse(userStr).role); } catch (e) {}
+    }
+  }, []);
 
   const { register, handleSubmit, reset, setValue, formState } = useForm();
   
@@ -215,9 +224,11 @@ export default function RoomsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Room Management</h2>
-        <Button onClick={openNewDialog} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="mr-2 h-4 w-4" /> Add Room
-        </Button>
+        {userRole === 'ADMIN' && (
+          <Button onClick={openNewDialog} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="mr-2 h-4 w-4" /> Add Room
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -286,9 +297,11 @@ export default function RoomsPage() {
                           <Utensils className="h-4 w-4 mr-1" /> Add Charge
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(room)}>
-                        <Pencil className="h-4 w-4 text-blue-600" />
-                      </Button>
+                      {userRole === 'ADMIN' && (
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(room)}>
+                          <Pencil className="h-4 w-4 text-blue-600" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

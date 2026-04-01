@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
+import { verifyUserFromRequest, hasRole } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/utils';
 import { calculateRoomCharges, calculateLateCharges } from '@/lib/utils';
 
@@ -172,6 +173,10 @@ export async function POST(request: NextRequest) {
 // PUT check-out guest
 export async function PUT(request: NextRequest) {
     try {
+        const user = await verifyUserFromRequest(request);
+        if (!hasRole(user, ['ADMIN'])) {
+            return errorResponse('Admin permission required to make changes', 403);
+        }
         const body = await request.json();
         const { id } = body;
 

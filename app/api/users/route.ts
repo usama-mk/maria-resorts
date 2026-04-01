@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { successResponse, errorResponse, forbiddenResponse } from '@/lib/utils';
-import { hashPassword } from '@/lib/auth';
+import { hashPassword, verifyUserFromRequest, hasRole } from '@/lib/auth';
 
 // GET all users (admin only)
 export async function GET(request: NextRequest) {
@@ -81,6 +81,10 @@ export async function POST(request: NextRequest) {
 // PUT update user (admin only)
 export async function PUT(request: NextRequest) {
     try {
+        const authUser = await verifyUserFromRequest(request);
+        if (!hasRole(authUser, ['ADMIN'])) {
+            return errorResponse('Admin permission required to make changes', 403);
+        }
         const userRole = request.headers.get('x-user-role');
 
         if (userRole !== 'ADMIN') {

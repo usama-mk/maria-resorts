@@ -40,10 +40,15 @@ export default function BillingPage() {
   const [selectedBill, setSelectedBill] = useState<any>(null);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [userRole, setUserRole] = useState('');
 
   const { register, handleSubmit, reset, formState } = useForm();
 
   useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      setUserRole(JSON.parse(userStr).role);
+    }
     fetchBills();
   }, [search]);
 
