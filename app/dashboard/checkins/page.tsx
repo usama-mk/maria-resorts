@@ -30,6 +30,8 @@ export default function CheckInsPage() {
   const [activeStays, setActiveStays] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCheckInOpen, setIsCheckInOpen] = useState(false);
+  const [isCheckOutOpen, setIsCheckOutOpen] = useState(false);
+  const [selectedCheckInForOut, setSelectedCheckInForOut] = useState<string | null>(null);
   
   // Data for lists
   const [guests, setGuests] = useState<any[]>([]);
@@ -37,6 +39,7 @@ export default function CheckInsPage() {
   const [reservations, setReservations] = useState<any[]>([]);
 
   const { register: registerCheckIn, handleSubmit: handleSubmitCheckIn, reset: resetCheckIn, formState: { isSubmitting: isCheckingIn } } = useForm();
+  const { register: registerCheckOut, handleSubmit: handleSubmitCheckOut, reset: resetCheckOut, formState: { isSubmitting: isCheckingOut } } = useForm();
 
   useEffect(() => {
     fetchActiveStays();
@@ -99,14 +102,20 @@ export default function CheckInsPage() {
     }
   };
 
-  const handleCheckOut = async (checkInId: string) => {
-    if (!confirm('Are you sure you want to check out this guest? This will generate their bill.')) return;
+  const onCheckOutSubmit = async (data: any) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.put('/api/checkins', { id: checkInId }, {
+      await axios.put('/api/checkins', { 
+        id: selectedCheckInForOut, 
+        actualCheckOut: data.actualCheckOut,
+        applyLateCharges: data.applyLateCharges,
+        customLateCharges: data.customLateCharges
+      }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success('Guest checked out & Bill generated');
+      setIsCheckOutOpen(false);
+      setSelectedCheckInForOut(null);
       fetchActiveStays();
     } catch (error: any) {
       toast.error('Check-out failed');
@@ -179,7 +188,10 @@ export default function CheckInsPage() {
                         variant="ghost" 
                         size="sm" 
                         className="text-red-600 hover:bg-red-50 border border-red-200"
-                        onClick={() => handleCheckOut(stay.id)}
+                        onClick={() => {
+                          setSelectedCheckInForOut(stay.id);
+                          setIsCheckOutOpen(true);
+                        }}
                       >
                         <LogOut className="mr-2 h-3 w-3" />
                         Check Out
@@ -247,10 +259,16 @@ export default function CheckInsPage() {
               </select>
             </div>
             
-             <div className="grid gap-2">
-                <Label htmlFor="expectedCheckOut">Expected Check Out *</Label>
-                <Input type="date" id="expectedCheckOut" {...registerCheckIn('expectedCheckOut')} />
-              </div>
+             <div className="grid grid-cols-2 gap-4">
+               <div className="grid gap-2">
+                  <Label htmlFor="checkInTime">Check-In Time *</Label>
+                  <Input type="datetime-local" id="checkInTime" defaultValue={new Date().toISOString().slice(0, 16)} {...registerCheckIn('checkInTime')} />
+                </div>
+               <div className="grid gap-2">
+                  <Label htmlFor="expectedCheckOut">Expected Check Out Date *</Label>
+                  <Input type="date" id="expectedCheckOut" {...registerCheckIn('expectedCheckOut')} />
+                </div>
+             </div>
 
               <div className="grid grid-cols-2 gap-4">
                  <div className="grid gap-2">
@@ -279,6 +297,63 @@ export default function CheckInsPage() {
               </Button>
               <Button type="submit" className="bg-green-600 hover:bg-green-700" loading={isCheckingIn}>
                 Complete Check-In
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Check-Out Dialog */}
+      <Dialog open={isCheckOutOpen} onOpenChange={setIsCheckOutOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Manual Check-Out</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitCheckOut(onCheckOutSubmit)} className="space-y-4 pt-4">
+            <div className="grid gap-2">
+              <Label htmlFor="actualCheckOut">Exact Check-Out Time *</Label>
+              <Input 
+                type="datetime-local" 
+                id="actualCheckOut" 
+                defaultValue={new Date().toISOString().slice(0, 16)} 
+                {...registerCheckOut('actualCheckOut')} 
+                required 
+              />
+              <p className="text-xs text-gray-500">
+                This exact time will be used to correctly formulate the billable nights.
+              </p>
+            </div>
+            
+            <div className="flex items-center space-x-2 pt-2">
+              <input
+                type="checkbox"
+                id="applyLateCharges"
+                className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-600"
+                {...registerCheckOut('applyLateCharges')}
+              />
+              <Label htmlFor="applyLateCharges">Apply Late Checkout Charges (if late)</Label>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="customLateCharges">Custom Late Charge Amount (Optional)</Label>
+              <Input 
+                type="number" 
+                id="customLateCharges" 
+                step="0.01"
+                placeholder="Leave empty for default calculation" 
+                {...registerCheckOut('customLateCharges')} 
+              />
+              <p className="text-xs text-gray-500">
+                Leave empty to use automatic calculation based on room rate and hours late.
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsCheckOutOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-red-600 hover:bg-red-700" loading={isCheckingOut}>
+                Confirm Check-Out
               </Button>
             </div>
           </form>

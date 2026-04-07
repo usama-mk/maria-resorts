@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        let { reservationId, guestId, roomId, expectedCheckOut, customPrice, advancePayment } = body;
+        let { reservationId, guestId, roomId, expectedCheckOut, customPrice, advancePayment, checkInTime } = body;
 
         // Sanitize reservationId (convert empty string to null)
         if (reservationId === '') reservationId = null;
@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
                 reservationId,
                 guestId,
                 roomId,
+                checkInTime: checkInTime ? new Date(checkInTime) : new Date(),
                 expectedCheckOut: new Date(expectedCheckOut),
                 customRate: customPrice ? parseFloat(customPrice) : null,
             },
@@ -207,7 +208,7 @@ export async function PUT(request: NextRequest) {
             return errorResponse('Admin permission required to make changes', 403);
         }
         const body = await request.json();
-        const { id } = body;
+        const { id, actualCheckOut, applyLateCharges, customLateCharges } = body;
 
         if (!id) {
             return errorResponse('Check-in ID is required');
@@ -232,11 +233,17 @@ export async function PUT(request: NextRequest) {
             return errorResponse('Guest already checked out');
         }
 
-        const now = new Date();
+        const now = actualCheckOut ? new Date(actualCheckOut) : new Date();
         const isLate = now > checkIn.expectedCheckOut;
-        const lateCharges = isLate
-            ? calculateLateCharges(checkIn.expectedCheckOut, now, checkIn.room.category.basePrice)
-            : 0;
+
+        let lateCharges = 0;
+        if (isLate && String(applyLateCharges) === 'true') {
+            if (customLateCharges !== undefined && customLateCharges !== null && customLateCharges !== '') {
+                lateCharges = parseFloat(customLateCharges);
+            } else {
+                lateCharges = calculateLateCharges(checkIn.expectedCheckOut, now, checkIn.customRate ?? checkIn.room.category.basePrice);
+            }
+        }
 
         // Update check-in with checkout time
         const updatedCheckIn = await prisma.checkIn.update({
