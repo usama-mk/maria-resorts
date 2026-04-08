@@ -1,5 +1,7 @@
 # Maria Resorts - Hotel Management System
 
+🚀 **Live Deployment:** [https://maria-resorts.vercel.app](https://maria-resorts.vercel.app)
+
 A comprehensive hotel resort management system built with **Next.js**, **PostgreSQL**, and **Prisma ORM**. This system covers all essential hotel operations including guest management, room bookings, billing, vendor management, and financial reporting.
 
 ## 🚀 Features
