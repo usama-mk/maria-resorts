@@ -38,8 +38,15 @@ export default function CheckInsPage() {
   const [rooms, setRooms] = useState<any[]>([]);
   const [reservations, setReservations] = useState<any[]>([]);
 
-  const { register: registerCheckIn, handleSubmit: handleSubmitCheckIn, reset: resetCheckIn, formState: { isSubmitting: isCheckingIn } } = useForm();
-  const { register: registerCheckOut, handleSubmit: handleSubmitCheckOut, reset: resetCheckOut, formState: { isSubmitting: isCheckingOut } } = useForm();
+  const { register: registerCheckIn, handleSubmit: handleSubmitCheckIn, reset: resetCheckIn, setValue: setCheckInValue, formState: { isSubmitting: isCheckingIn } } = useForm();
+  const { register: registerCheckOut, handleSubmit: handleSubmitCheckOut, reset: resetCheckOut, setValue: setCheckOutValue, formState: { isSubmitting: isCheckingOut } } = useForm();
+
+  useEffect(() => {
+    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 16);
+    setCheckInValue('checkInTime', localISOTime);
+    setCheckOutValue('actualCheckOut', localISOTime);
+  }, [setCheckInValue, setCheckOutValue]);
 
   useEffect(() => {
     fetchActiveStays();
@@ -89,7 +96,11 @@ export default function CheckInsPage() {
   const onCheckInSubmit = async (data: any) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.post('/api/checkins', data, {
+      const payload = { ...data };
+      if (payload.checkInTime) {
+        payload.checkInTime = new Date(payload.checkInTime).toISOString();
+      }
+      await axios.post('/api/checkins', payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success('Guest checked in successfully');
@@ -107,9 +118,10 @@ export default function CheckInsPage() {
       const token = localStorage.getItem('token');
       await axios.put('/api/checkins', { 
         id: selectedCheckInForOut, 
-        actualCheckOut: data.actualCheckOut,
+        actualCheckOut: data.actualCheckOut ? new Date(data.actualCheckOut).toISOString() : undefined,
         applyLateCharges: data.applyLateCharges,
-        customLateCharges: data.customLateCharges
+        customLateCharges: data.customLateCharges,
+        discountAmount: data.discountAmount
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -259,10 +271,10 @@ export default function CheckInsPage() {
               </select>
             </div>
             
-             <div className="grid grid-cols-2 gap-4">
+               <div className="grid grid-cols-2 gap-4">
                <div className="grid gap-2">
                   <Label htmlFor="checkInTime">Check-In Time *</Label>
-                  <Input type="datetime-local" id="checkInTime" defaultValue={new Date().toISOString().slice(0, 16)} {...registerCheckIn('checkInTime')} />
+                  <Input type="datetime-local" id="checkInTime" {...registerCheckIn('checkInTime')} />
                 </div>
                <div className="grid gap-2">
                   <Label htmlFor="expectedCheckOut">Expected Check Out Date *</Label>
@@ -315,7 +327,6 @@ export default function CheckInsPage() {
               <Input 
                 type="datetime-local" 
                 id="actualCheckOut" 
-                defaultValue={new Date().toISOString().slice(0, 16)} 
                 {...registerCheckOut('actualCheckOut')} 
                 required 
               />
@@ -345,6 +356,20 @@ export default function CheckInsPage() {
               />
               <p className="text-xs text-gray-500">
                 Leave empty to use automatic calculation based on room rate and hours late.
+              </p>
+            </div>
+            
+            <div className="grid gap-2 border-t pt-4 mt-2">
+              <Label htmlFor="discountAmount">Apply Discount (Optional)</Label>
+              <Input 
+                type="number" 
+                id="discountAmount" 
+                step="0.01"
+                placeholder="0.00" 
+                {...registerCheckOut('discountAmount')} 
+              />
+              <p className="text-xs text-gray-500">
+                This discount amount will be subtracted from the final bill.
               </p>
             </div>
             

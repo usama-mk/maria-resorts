@@ -208,7 +208,7 @@ export async function PUT(request: NextRequest) {
             return errorResponse('Admin permission required to make changes', 403);
         }
         const body = await request.json();
-        const { id, actualCheckOut, applyLateCharges, customLateCharges } = body;
+        const { id, actualCheckOut, applyLateCharges, customLateCharges, discountAmount } = body;
 
         if (!id) {
             return errorResponse('Check-in ID is required');
@@ -331,6 +331,21 @@ export async function PUT(request: NextRequest) {
                     quantity: 1,
                     unitPrice: updatedCheckIn.lateCharges,
                     total: updatedCheckIn.lateCharges,
+                },
+            });
+        }
+
+        // Add Discount Item if applicable
+        if (discountAmount && parseFloat(discountAmount) > 0) {
+            const discount = parseFloat(discountAmount);
+            await prisma.billItem.create({
+                data: {
+                    billId: bill.id,
+                    type: 'OTHER',
+                    description: 'Discount Applied',
+                    quantity: 1,
+                    unitPrice: -discount,
+                    total: -discount,
                 },
             });
         }
