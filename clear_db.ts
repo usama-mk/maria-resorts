@@ -24,9 +24,21 @@ async function main() {
         prisma.staffTransaction.deleteMany(),
         prisma.auditLog.deleteMany(),
 
-        // Reset staff balances to 0
         prisma.staff.updateMany({
             data: { balance: 0 }
+        }),
+
+        // Reset room statuses to AVAILABLE
+        prisma.room.updateMany({
+            data: { status: 'AVAILABLE' }
+        }),
+
+        // Ensure all menu items and services are marked as available
+        prisma.foodMenuItem.updateMany({
+            data: { available: true }
+        }),
+        prisma.extraService.updateMany({
+            data: { available: true }
         })
     ]);
 
